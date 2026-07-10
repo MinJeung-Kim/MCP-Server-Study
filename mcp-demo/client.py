@@ -1,71 +1,94 @@
-"""MCP 클라이언트 예제 — 서버에 붙어서 3단계 흐름을 밟는다.
+"""세 가지 primitive를 모두 시연하는 클라이언트.
 
-  ① 연결   : Client가 server.py를 하위 프로세스로 띄우고 handshake
-  ② 조회   : tools/list, resources/list 로 능력 목록을 받아온다
-  ③ 실행   : tools/call, resources/read 로 실제 기능을 호출한다
-
-`async with Client(...)` 블록에 들어가는 순간 ①이 자동으로 일어난다.
-(버전 협상, initialize, initialized 까지 FastMCP가 알아서 처리)
+각 primitive마다:
+  - 목록 조회 (discovery)
+  - 실제 사용 (tool 실행 / resource 읽기 / prompt 렌더링)
+을 순서대로 보여준다.
 """
 
 import asyncio
 import sys
-from pathlib import Path
 
 from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 
 
-def line(title: str) -> None:
-    print(f"\n{'=' * 55}\n{title}\n{'=' * 55}")
+def sec(title: str) -> None:
+    print(f"\n{'═' * 58}\n {title}\n{'═' * 58}")
 
 
 async def main() -> None:
-    # 서버를 어떤 명령으로 띄울지 명시적으로 지정한다.
-    # sys.executable = 지금 client.py를 돌리고 있는 바로 그 파이썬의 절대경로.
-    # 이 파이썬으로 서버도 띄우므로 uv/venv/시스템 파이썬 불일치가 원천 차단된다.
-    # 서버가 뜨다 죽으면 그 에러가 Connection closed에 가려진다.
-    # log_file로 서버의 stderr를 파일에 받아서 진짜 원인을 확인한다.
+    from pathlib import Path
     transport = StdioTransport(
         command=sys.executable,
         args=["server.py"],
         log_file=Path("server_stderr.log"),
         keep_alive=False,
     )
-    client = Client(transport)
 
-    line("① 연결 (handshake)")
-    async with client:  # ← 여기서 initialize/initialized 자동 수행
-        print("Client ↔ Server 연결 완료 (버전·기능 협상 끝)")
+    async with Client(transport) as client:
+        print("Client ↔ Server 연결 완료")
 
-        line("② 조회 (discovery)")
+        # ── 1. TOOLS ──────────────────────────────────────
+        sec("1. TOOLS (행동)")
         tools = await client.list_tools()
-        print(f"사용 가능한 도구 {len(tools)}개:")
+        print(f"등록된 도구 {len(tools)}개:")
         for t in tools:
-            params = list(t.inputSchema.get("properties", {}).keys())
-            print(f"  - {t.name}{tuple(params)}  :: {t.description}")
+            print(f"  • {t.name} — {t.description.splitlines()[0]}")
 
+        print("\n▶ add(3, 5)")
+        r = await client.call_tool("add", {"a": 3, "b": 5})
+        print(f"  = {r.data}")
+
+        print("\n▶ calculate_1rm(weight=100, reps=5)")
+        r = await client.call_tool("calculate_1rm", {"weight": 100, "reps": 5})
+        print(f"  = {r.data}")
+
+        # ── 2. RESOURCES ──────────────────────────────────
+        sec("2. RESOURCES (읽기)")
         resources = await client.list_resources()
-        print(f"\n사용 가능한 리소스 {len(resources)}개:")
-        for r in resources:
-            print(f"  - {r.uri}  :: {r.description}")
+        templates = await client.list_resource_templates()
+        print(f"정적 리소스 {len(resources)}개:")
+        for res in resources:
+            print(f"  • {res.uri} — {res.description.splitlines()[0]}")
+        print(f"리소스 템플릿 {len(templates)}개:")
+        for tmpl in templates:
+            print(f"  • {tmpl.uriTemplate} — {tmpl.description.splitlines()[0]}")
 
-        line("③ 실행 (execution)")
+        print("\n▶ read config://app")
+        r = await client.read_resource("config://app")
+        print(f"  = {r[0].text}")
 
-        print("→ tools/call: add(a=3, b=5)")
-        r1 = await client.call_tool("add", {"a": 3, "b": 5})
-        print(f"← 결과: {r1.data}")
+        print("\n▶ read server://time (동적)")
+        r = await client.read_resource("server://time")
+        print(f"  = {r[0].text}")
 
-        print("\n→ tools/call: greet(name='Roxie')")
-        r2 = await client.call_tool("greet", {"name": "Roxie"})
-        print(f"← 결과: {r2.data}")
+        print("\n▶ read member://1 (템플릿에 ID 주입)")
+        r = await client.read_resource("member://1")
+        print(f"  = {r[0].text}")
 
-        print("\n→ resources/read: config://app")
-        r3 = await client.read_resource("config://app")
-        print(f"← 결과: {r3[0].text}")
+        # ── 3. PROMPTS ────────────────────────────────────
+        sec("3. PROMPTS (템플릿)")
+        prompts = await client.list_prompts()
+        print(f"등록된 프롬프트 {len(prompts)}개:")
+        for p in prompts:
+            args = [a.name for a in (p.arguments or [])]
+            print(f"  • {p.name}{tuple(args)} — {p.description.splitlines()[0]}")
 
-    line("연결 종료")
-    print("async with 블록을 벗어나면 서버 프로세스도 정리된다")
+        print("\n▶ render summarize(text=...)")
+        r = await client.get_prompt("summarize", {"text": "MCP는 AI를 위한 표준 연결 규격이다. 도구와 데이터를 붙인다."})
+        for m in r.messages:
+            print(f"  [{m.role}] {m.content.text}")
+
+        print("\n▶ render code_review(language='python', code=...)")
+        r = await client.get_prompt(
+            "code_review",
+            {"language": "python", "code": "def f(x): return x*2"},
+        )
+        for m in r.messages:
+            print(f"  [{m.role}] {m.content.text}")
+
+    sec("완료 — 세 primitive 모두 시연됨")
 
 
 if __name__ == "__main__":

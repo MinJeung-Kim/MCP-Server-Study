@@ -1,4 +1,3 @@
-[SERVER] 서버 시작 (stdio 대기 중)
 
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -12,39 +11,12 @@
 │                                FastMCP 3.4.4                                │
 │                            https://gofastmcp.com                            │
 │                                                                             │
-│                 🖥  Server:      Demo Server, 3.4.4                          │
+│                 🖥  Server:      Complete Demo Server, 3.4.4                 │
 │                 🚀 Deploy free: https://horizon.prefect.io                  │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 
-[07/10/26 11:24:32] INFO     Starting MCP server 'Demo Server' transport.py:241
-                             with transport 'stdio'                            
-[SERVER] add(a=3, b=5) 실행됨
-[SERVER] greet(name='Roxie') 실행됨
-[SERVER] config://app 리소스 읽힘
-[SERVER] 서버 시작 (stdio 대기 중)
-
-
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                                                                             │
-│                                                                             │
-│                        ▄▀▀ ▄▀█ █▀▀ ▀█▀ █▀▄▀█ █▀▀ █▀█                        │
-│                        █▀  █▀█ ▄▄█  █  █ ▀ █ █▄▄ █▀▀                        │
-│                                                                             │
-│                                                                             │
-│                                                                             │
-│                                FastMCP 3.4.4                                │
-│                            https://gofastmcp.com                            │
-│                                                                             │
-│                 🖥  Server:      Demo Server, 3.4.4                          │
-│                 🚀 Deploy free: https://horizon.prefect.io                  │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-
-[07/10/26 11:27:03] INFO     Starting MCP server 'Demo Server' transport.py:241
-                             with transport 'stdio'                            
-[SERVER] add(a=3, b=5) 실행됨
-[SERVER] greet(name='Roxie') 실행됨
-[SERVER] config://app 리소스 읽힘
+[07/10/26 14:39:27] INFO     Starting MCP server 'Complete     transport.py:241
+                             Demo Server' with transport                       
+                             'stdio'                                           
